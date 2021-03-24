@@ -5,15 +5,16 @@ Detectron2 depends on utilities in
 `fvcore <https://github.com/facebookresearch/fvcore/>`_.
 We include part of fvcore documentation here for easier reference.
 
-fvcore.nn 
+fvcore.nn
 -----------------
 
 .. automodule:: fvcore.nn
     :members:
+    :inherited-members:
     :undoc-members:
     :show-inheritance:
 
-fvcore.common 
+fvcore.common
 ---------------------
 
 .. automodule:: fvcore.common.checkpoint
@@ -28,6 +29,12 @@ fvcore.common
 
 .. automodule:: fvcore.common.history_buffer
     :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: fvcore.common.param_scheduler
+    :members:
+    :inherited-members:
     :undoc-members:
     :show-inheritance:
 

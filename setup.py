@@ -12,7 +12,7 @@ from torch.utils.cpp_extension import CUDA_HOME, CppExtension, CUDAExtension
 from torch.utils.hipify import hipify_python
 
 torch_ver = [int(x) for x in torch.__version__.split(".")[:2]]
-assert torch_ver >= [1, 5], "Requires PyTorch >= 1.5"
+assert torch_ver >= [1, 6], "Requires PyTorch >= 1.6"
 
 
 def get_version():
@@ -211,16 +211,22 @@ setup(
         "matplotlib",
         "tqdm>4.29.0",
         "tensorboard",
-        "fvcore>=0.1.2",
-        "iopath>=0.1.2",
+        # Lock version of fvcore/iopath because they may have breaking changes
+        # NOTE: when updating fvcore/iopath version, make sure fvcore depends
+        # on the same version of iopath.
+        "fvcore>=0.1.4,<0.1.5",  # required like this to make it pip installable
+        "iopath>=0.1.7,<0.1.8",
         "pycocotools>=2.0.2",  # corresponds to https://github.com/ppwwyyxx/cocoapi
         "future",  # used by caffe2
         "pydot",  # used to save caffe2 SVGs
+        "dataclasses; python_version<'3.7'",
+        "omegaconf==2.1.0.dev22",
     ],
     extras_require={
         "all": [
             "shapely",
             "psutil",
+            "hydra-core",
             "panopticapi @ https://github.com/cocodataset/panopticapi/archive/master.zip",
         ],
         "dev": [

@@ -1,31 +1,50 @@
 # Deployment
 
-Models written in Python needs to go through an export process to become a deployable artifact.
+Models written in Python need to go through an export process to become a deployable artifact.
 A few basic concepts about this process:
 
-__"Export method"__ is how a Python model is turned into a serialized graph.
+__"Export method"__ is how a Python model is fully serialized to a deployable format.
 We support the following export methods:
 
-* `tracing`: see [pytorch documentation](https://pytorch.org/tutorials/beginner/Intro_to_TorchScript_tutorial.html) for details.
-* `scripting`: see [pytorch documentation](https://pytorch.org/tutorials/beginner/Intro_to_TorchScript_tutorial.html) for details.
+* `tracing`: see [pytorch documentation](https://pytorch.org/tutorials/beginner/Intro_to_TorchScript_tutorial.html) to learn about it
+* `scripting`: see [pytorch documentation](https://pytorch.org/tutorials/beginner/Intro_to_TorchScript_tutorial.html) to learn about it
 * `caffe2_tracing`: replace parts of the model by caffe2 operators, then use tracing.
 
-__"Format"__ is how a serialized graph is described in a file, e.g.
+__"Format"__ is how a serialized model is described in a file, e.g.
 TorchScript, Caffe2 protobuf, ONNX format.
-__"Runtime"__ is an engine that loads a serialized graph and executes it,
+__"Runtime"__ is an engine that loads a serialized model and executes it,
 e.g., PyTorch, Caffe2, TensorFlow, onnxruntime, TensorRT, etc.
 A runtime is often tied to a specific format
 (e.g. PyTorch needs TorchScript format, Caffe2 needs protobuf format).
-We currently support the following combination.
+We currently support the following combination and each has some limitations:
 
 ```eval_rst
-+---------------+------------------------------------+-------------+-------------+
-| Export Method | caffe2_tracing                     | tracing     | scripting   |
-+===============+====================================+=============+=============+
-| **Formats**   | Caffe2 protobuf, TorchScript, ONNX | TorchScript | TorchScript |
-+---------------+------------------------------------+-------------+-------------+
-| **Runtime**   | Caffe2, PyTorch                    | PyTorch     | PyTorch     |
-+---------------+------------------------------------+-------------+-------------+
++----------------------------+-------------+-------------+-----------------------------+
+|       Export Method        |   tracing   |  scripting  |       caffe2_tracing        |
++============================+=============+=============+=============================+
+| **Formats**                | TorchScript | TorchScript | Caffe2, TorchScript, ONNX   |
++----------------------------+-------------+-------------+-----------------------------+
+| **Runtime**                | PyTorch     | PyTorch     | Caffe2, PyTorch             |
++----------------------------+-------------+-------------+-----------------------------+
+| C++/Python inference       | ✅          | ❌ (WIP_)   | ✅                          |
++----------------------------+-------------+-------------+-----------------------------+
+| Dynamic resolution         | ✅          | ✅          | ✅                          |
++----------------------------+-------------+-------------+-----------------------------+
+| Batch size requirement     | Constant    | Dynamic     | Batch inference unsupported |
++----------------------------+-------------+-------------+-----------------------------+
+| Extra runtime deps         | torchvision | torchvision | Caffe2 ops (usually already |
+|                            |             |             |                             |
+|                            |             |             | included in PyTorch)        |
++----------------------------+-------------+-------------+-----------------------------+
+| Faster/Mask/Keypoint R-CNN | ✅          | ✅          | ✅                          |
++----------------------------+-------------+-------------+-----------------------------+
+| RetinaNet                  | ✅          | ✅          | ✅                          |
++----------------------------+-------------+-------------+-----------------------------+
+| PointRend R-CNN            | ✅          | ❌          | ❌                          |
++----------------------------+-------------+-------------+-----------------------------+
+
+.. _WIP: https://github.com/pytorch/pytorch/issues/46944
+
 ```
 
 We don't plan to work on additional support for other formats/runtime, but contributions are welcome.
@@ -36,7 +55,7 @@ We don't plan to work on additional support for other formats/runtime, but contr
 Models can be exported to TorchScript format, by either
 [tracing or scripting](https://pytorch.org/tutorials/beginner/Intro_to_TorchScript_tutorial.html).
 The output model file can be loaded without detectron2 dependency in either Python or C++.
-The exported model likely requires torchvision (or its C++ library) dependency for some custom ops.
+The exported model often requires torchvision (or its C++ library) dependency for some custom ops.
 
 This feature requires PyTorch ≥ 1.8 (or latest on github before 1.8 is released).
 
@@ -52,9 +71,12 @@ Scripting can support dynamic batch size.
 
 ### Usage
 
-The usage is currently demonstrated in [test_export_torchscript.py](../../tests/test_export_torchscript.py)
+The main export APIs for tracing and scripting are [TracingAdapter](../modules/export.html#detectron2.export.TracingAdapter)
+and [scripting_with_instances](../modules/export.html#detectron2.export.scripting_with_instances).
+Their usage is currently demonstrated in [test_export_torchscript.py](../../tests/test_export_torchscript.py)
 (see `TestScripting` and `TestTracing`)
 as well as the [deployment example](../../tools/deploy).
+Please check that these examples can run, and then modify for your use cases.
 The usage now requires some user effort and necessary knowledge for each model to workaround the limitation of scripting and tracing.
 In the future we plan to wrap these under simpler APIs to lower the bar to use them.
 

@@ -1,4 +1,5 @@
 // Copyright (c) Facebook, Inc. and its affiliates.
+// @lint-ignore-every CLANGTIDY
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
@@ -8,7 +9,9 @@
 #include <torch/csrc/autograd/grad_mode.h>
 #include <torch/script.h>
 
-#include <torchvision/vision.h> // only needed for export_method=tracing
+// only needed for export_method=tracing
+#include <torchvision/vision.h> // @oss-only
+// @fb-only: #include <torchvision/csrc/vision.h>
 
 using namespace std;
 
@@ -26,7 +29,8 @@ c10::IValue get_caffe2_tracing_inputs(cv::Mat& img, c10::Device device) {
   input = input.to(device, torch::kFloat).permute({0, 3, 1, 2}).contiguous();
 
   std::array<float, 3> im_info_data{height * 1.0f, width * 1.0f, 1.0f};
-  auto im_info = torch::from_blob(im_info_data.data(), {1, 3}).to(device);
+  auto im_info =
+      torch::from_blob(im_info_data.data(), {1, 3}).clone().to(device);
   return std::make_tuple(input, im_info);
 }
 
@@ -91,16 +95,24 @@ Usage:
        << ms * 1.0 / 1e6 / N_benchmark << " seconds" << endl;
 
   auto outputs = output.toTuple()->elements();
+  cout << "Number of output tensors: " << outputs.size() << endl;
+  at::Tensor bbox, pred_classes, pred_masks, scores;
   // parse Mask R-CNN outputs
-  // NOTE: for export-method=tracing, the order of outputs may change in the
-  // future
-  auto bbox = outputs[0].toTensor(), scores = outputs[1].toTensor(),
-       labels = outputs[2].toTensor(), mask_probs = outputs[3].toTensor();
+  if (is_caffe2) {
+    bbox = outputs[0].toTensor(), scores = outputs[1].toTensor(),
+    pred_classes = outputs[2].toTensor(), pred_masks = outputs[3].toTensor();
+  } else {
+    bbox = outputs[0].toTensor(), pred_classes = outputs[1].toTensor(),
+    pred_masks = outputs[2].toTensor(), scores = outputs[3].toTensor();
+    // outputs[-1] is image_size, others fields ordered by their field name in
+    // Instances
+  }
 
   cout << "bbox: " << bbox.toString() << " " << bbox.sizes() << endl;
   cout << "scores: " << scores.toString() << " " << scores.sizes() << endl;
-  cout << "labels: " << labels.toString() << " " << labels.sizes() << endl;
-  cout << "mask_probs: " << mask_probs.toString() << " " << mask_probs.sizes()
+  cout << "pred_classes: " << pred_classes.toString() << " "
+       << pred_classes.sizes() << endl;
+  cout << "pred_masks: " << pred_masks.toString() << " " << pred_masks.sizes()
        << endl;
 
   int num_instances = bbox.sizes()[0];
